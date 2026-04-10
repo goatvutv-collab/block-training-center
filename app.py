@@ -1,7 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# 1. CONFIGURAÇÃO DO CT DE ELITE
+# 1. CONFIGURAÇÃO CT MOBILE (OCKET CONSOLE)
 st.set_page_config(page_title="GOAT TV - CONDUÇÃO PRO", layout="centered", initial_sidebar_state="collapsed")
 
 st.markdown("""
@@ -9,10 +9,10 @@ st.markdown("""
     .main { background-color: #0e1117; }
     h3 { color: #00ff00; text-align: center; font-family: sans-serif; margin-top: -30px; text-shadow: 0 0 10px #00ff00; }
     </style>
-    <h3>⚽ TREINO: CONDUÇÃO E TOQUINHO</h3>
+    <h3>🎮 POCKET CT: DRIBLE GUIADO</h3>
 """, unsafe_allow_html=True)
 
-# 2. MOTOR DO JOGO: JOGADOR + BOLA COM FÍSICA DE TOQUE
+# 2. MOTOR DO JOGO COM CONDUÇÃO GUIADA (REMEDO FINAL)
 game_code = """
 <div style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
     <div id="hud" style="color: white; font-family: monospace; margin-bottom: 5px; font-size: 13px; background: rgba(0,0,0,0.6); padding: 5px 15px; border-radius: 20px; display: flex; gap: 15px;">
@@ -34,7 +34,7 @@ game_code = """
 
     // ENTIDADES
     let player = { x: 160, y: 400, speed: 3.5, radius: 12 };
-    let ball = { x: 160, y: 360, vx: 0, vy: 0, radius: 7, friction: 0.96 };
+    let ball = { x: 160, y: 375, vx: 0, vy: 0, radius: 7, friction: 0.96 };
     
     let score = 1000;
     let laps = 0;
@@ -59,6 +59,10 @@ game_code = """
         else { countOverlay.innerText = ""; gameState = 'PLAYING'; clearInterval(countInterval); }
     }, 1000);
 
+    function lerp(start, end, amt) {
+        return (1 - amt) * start + amt * end;
+    }
+
     function drawCone(x, y, isDown) {
         let s = y / 460 + 0.5;
         if (isDown) {
@@ -75,37 +79,47 @@ game_code = """
         if (gameState !== 'PLAYING') { render(); requestAnimationFrame(update); return; }
 
         // 1. MOVIMENTO JOGADOR (Joystick)
+        let playerVelX = 0;
+        let playerVelY = 0;
+
         if (joy.active) {
             let dx = joy.currX - joy.x; let dy = joy.currY - joy.y;
             let dist = Math.hypot(dx, dy);
             if (dist > 0) {
-                player.x += (dx / dist) * player.speed;
-                player.y += (dy / dist) * player.speed;
+                playerVelX = (dx / dist) * player.speed;
+                playerVelY = (dy / dist) * player.speed;
+                player.x += playerVelX;
+                player.y += playerVelY;
             }
         }
 
-        // 2. FÍSICA DA BOLA (Toquinho)
-        let distPB = Math.hypot(player.x - ball.x, player.y - ball.y);
-        if (distPB < player.radius + ball.radius) {
-            // Toquinho do Avatar: Empurra a bola
-            let angle = Math.atan2(ball.y - player.y, ball.x - player.x);
-            // Variável Aleatória (Esquerda, Direita ou Centro)
-            let randomSteer = (Math.random() - 0.5) * 0.5; 
-            let pushPower = 5;
-            ball.vx = Math.cos(angle + randomSteer) * pushPower;
-            ball.vy = Math.sin(angle + randomSteer) * pushPower;
+        // 2. FÍSICA DA BOLA (Condução Guiada - REMEDO TÁTICO)
+        if (joy.active) {
+            // A bola tenta suavemente manter uma posição fixa em frente ao jogador.
+            // A posição alvo é playerX/Y + velX/Y * 7 (a cerca de 25 pixels em frente).
+            let targetBallX = player.x + playerVelX * 7;
+            let targetBallY = player.y + playerVelY * 7;
+            
+            // Usamos LERP para que a bola siga suavemente para a posição alvo.
+            // O valor 0.1 dá a sensação de "lightness" e física de condução.
+            ball.x = lerp(ball.x, targetBallX, 0.1);
+            ball.y = lerp(ball.y, targetBallY, 0.1);
+            
+            // Zeramos a velocidade física para que a bola não deflete agressivamente.
+            ball.vx = 0;
+            ball.vy = 0;
+        } else {
+            // Se o joystick não está ativo, a bola apenas desacelera.
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            ball.vx *= ball.friction;
+            ball.vy *= ball.friction;
         }
 
-        // Aplicar movimento e atrito na bola
-        ball.x += ball.vx;
-        ball.y += ball.vy;
-        ball.vx *= ball.friction;
-        ball.vy *= ball.friction;
-
-        // 3. COLISÕES BOLA VS CONES
+        // 3. COLISÕES JOGADOR E BOLA VS CONES
         gates.forEach(g => {
-            if (!g.c1Down && Math.hypot(ball.x - g.x1, ball.y - g.y) < 15) { g.c1Down = true; score -= 100; }
-            if (!g.c2Down && Math.hypot(ball.x - g.x2, ball.y - g.y) < 15) { g.c2Down = true; score -= 100; }
+            if (!g.c1Down && (Math.hypot(player.x - g.x1, player.y - g.y) < 18 || Math.hypot(ball.x - g.x1, ball.y - g.y) < 15)) { g.c1Down = true; score -= 100; }
+            if (!g.c2Down && (Math.hypot(player.x - g.x2, player.y - g.y) < 18 || Math.hypot(ball.x - g.x2, ball.y - g.y) < 15)) { g.c2Down = true; score -= 100; }
         });
         scoreDisp.innerText = Math.max(0, score);
 
@@ -144,17 +158,19 @@ game_code = """
             }
         });
 
-        // Bola
+        // 1. Desenha a base (Sombra) do jogador
+        let s = player.y / 460 + 0.5;
+        ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.beginPath(); ctx.ellipse(player.x, player.y, 12*s, 5*s, 0, 0, Math.PI*2); ctx.fill();
+
+        // 2. Desenha a Bola
         ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = "black"; ctx.lineWidth = 1; ctx.stroke();
 
-        // Jogador (Aysher 14)
-        let s = player.y / 460 + 0.5;
-        ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.beginPath(); ctx.ellipse(player.x, player.y, 12*s, 5*s, 0, 0, Math.PI*2); ctx.fill();
+        // 3. Desenha o resto do corpo do Jogador (Aysher 14)
         ctx.fillStyle = "#ffd700"; ctx.fillRect(player.x-7*s, player.y-25*s, 14*s, 20*s);
         ctx.fillStyle = "#d2b48c"; ctx.beginPath(); ctx.arc(player.x, player.y-32*s, 6*s, 0, Math.PI*2); ctx.fill();
 
-        // Analógico
+        // 4. Desenha o Analógico
         ctx.beginPath(); ctx.arc(joy.x, joy.y, joy.baseRadius, 0, Math.PI*2);
         ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fill();
         ctx.beginPath(); ctx.arc(joy.currX, joy.currY, joy.stickRadius, 0, Math.PI*2);
@@ -186,9 +202,9 @@ game_code = """
 
 components.html(game_code, height=530)
 
-# Informações de Carreira
+# Informações de Carreira (GOAT TV FEDERAÇÃO)
 st.sidebar.markdown("### 🏟️ CT GOAT TV")
-st.sidebar.write("**Módulo:** Condução Pragmática")
-st.sidebar.write("**Jogador:** Aysher Castro")
+st.sidebar.write("**Módulo:** Drible Guiado 2.5D")
+st.sidebar.write("**Atleta:** Aysher Castro")
 st.sidebar.markdown("---")
-st.sidebar.warning("A bola desvia aleatoriamente. Use o corpo do jogador para corrigir a trajetória.")
+st.sidebar.success("Física de condução suavizada. O corpo do jogador agora 'guia' a bola.")

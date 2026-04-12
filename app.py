@@ -2,32 +2,54 @@ import streamlit as st
 import streamlit.components.v1 as components
 import json
 
-# 1. CONFIGURAÇÃO GOAT TV
-st.set_page_config(page_title="GOAT TV - CT ARCADE v16.1", layout="centered", initial_sidebar_state="collapsed")
+# 1. CONFIGURAÇÃO INSTITUCIONAL GOAT TV
+st.set_page_config(page_title="GOAT TV - TRAINING CENTER", layout="centered", initial_sidebar_state="collapsed")
 
-# Atributos baseados no Dossiê
-DNA_ATTRS = ["Condução", "Velocidade", "Drible"]
-TRAVA_ATTRS = ["Desarme", "Impacto Físico"]
+# --- LÓGICA DE ARQUÉTIPOS ---
+TREINOS_LOGIC = {
+    "DRIBLE": {
+        "sobe": ["Condução", "Velocidade"], 
+        "desce": ["Desarme", "Impacto Físico"],
+        "desc": "Foco em agilidade. O atleta fica 'liso', mas perde força na dividida."
+    },
+    "PASSE": {
+        "sobe": ["Passe Curto", "Visão"], 
+        "desce": ["Aceleração", "Força Chute"],
+        "desc": "O cérebro do time. Precisão total, mas sacrifica o arranque."
+    },
+    "CHUTE": {
+        "sobe": ["Finalização", "Força"], 
+        "desce": ["Resistência", "Marcação"],
+        "desc": "O matador. Foco no gol, mas cansa rápido e não ajuda na zaga."
+    }
+}
 
 if 'app_mode' not in st.session_state:
     st.session_state.app_mode = 'LOBBY'
 
 # --- TELA 1: LOBBY ---
 if st.session_state.app_mode == 'LOBBY':
-    st.markdown("<h2 style='text-align: center; color: #ffd700;'>🏟️ LOBBY GOAT TV</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #ffd700;'>🏟️ LOBBY DE TREINAMENTO</h2>", unsafe_allow_html=True)
     st.write("---")
+    
     col1, col2 = st.columns([1, 1.2])
     with col1:
-        tipo_treino = st.selectbox("SETOR:", ["DRIBLE", "PASSE", "CHUTE"])
+        tipo_treino = st.selectbox("ESCOLHA A ATIVIDADE:", list(TREINOS_LOGIC.keys()))
         if st.button("INICIAR TREINO 🏟️", use_container_width=True):
             st.session_state.tipo_selecionado = tipo_treino
             st.session_state.app_mode = 'TRAINING'
             st.rerun()
+
     with col2:
-        st.markdown("### 📊 Evolução de Arquétipo")
-        st.success("📈 DNA: " + ", ".join(DNA_ATTRS))
-        st.error("📉 TRAVA: " + ", ".join(TRAVA_ATTRS))
-        st.info("💡 Feedback tátil, sonoro e relatório completo de habilidades ativado.")
+        st.markdown(f"### 📋 Impacto no Atleta")
+        st.info(TREINOS_LOGIC[tipo_treino]['desc'])
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("##### 📈 DNA")
+            for s in TREINOS_LOGIC[tipo_treino]['sobe']: st.markdown(f"<span style='color:#0f0'>● {s}</span>", unsafe_allow_html=True)
+        with c2:
+            st.markdown("##### 📉 TRAVA")
+            for d in TREINOS_LOGIC[tipo_treino]['desce']: st.markdown(f"<span style='color:#f00'>● {d}</span>", unsafe_allow_html=True)
 
 # --- TELA 2: CAMPO DE TREINAMENTO ---
 elif st.session_state.app_mode == 'TRAINING':
@@ -42,8 +64,8 @@ elif st.session_state.app_mode == 'TRAINING':
                 enemies:[
                     {x:100, y:340, centerX:100, centerY:340, rangeX:120, rangeY:0, speedX:1.5, speedY:0, dirX:1, dirY:0, type:'H'},
                     {x:220, y:340, centerX:220, centerY:340, rangeX:120, rangeY:0, speedX:1.5, speedY:0, dirX:-1, dirY:0, type:'H'},
-                    {x:160, y:180, centerX:160, centerY:180, rangeX:90, rangeY:40, speedX:1.3, speedY:0.8, dirX:1, dirY:1, type:'D'},
-                    {x:160, y:100, centerX:160, centerY:100, rangeX:90, rangeY:30, speedX:1.3, speedY:0.6, dirX:-1, dirY:-1, type:'D'}
+                    {x:160, y:180, centerX:160, centerY:180, rangeX:80, rangeY:40, speedX:1.2, speedY:0.8, dirX:1, dirY:1, type:'D'},
+                    {x:160, y:100, centerX:160, centerY:100, rangeX:80, rangeY:30, speedX:1.2, speedY:0.6, dirX:-1, dirY:-1, type:'D'}
                 ]}
         }""",
         "PASSE": "{1: {startPos:{x:160, y:410}, gates:[{x1:130,x2:190,y:100}]}, 2: {startPos:{x:160, y:410}, gates:[{x1:40,x2:100,y:150}]}, 3: {startPos:{x:160, y:410}, gates:[{x1:220,x2:280,y:150}]}}",
@@ -67,7 +89,7 @@ elif st.session_state.app_mode == 'TRAINING':
         const phaseDisp = document.getElementById('phaseDisp');
         const modeDisp = document.getElementById('modeDisp');
 
-        // ÁUDIO E HÁPTICO
+        // --- SISTEMA DE ÁUDIO E VIBRAÇÃO ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playWhistle() {{
             const osc = audioCtx.createOscillator();
@@ -81,7 +103,7 @@ elif st.session_state.app_mode == 'TRAINING':
             osc.start(); osc.stop(audioCtx.currentTime + 0.2);
         }}
 
-        function triggerHaptic(ms) {{ if (navigator.vibrate) navigator.vibrate(ms); }}
+        function triggerHaptic(ms) {{ if (navigator.vibrate) {{ navigator.vibrate(ms); }} }}
 
         let player = {{ x: 160, y: 410, speed: 1.5, hitTimer: 0 }};
         let ball = {{ x: 160, y: 385 }};
@@ -103,7 +125,7 @@ elif st.session_state.app_mode == 'TRAINING':
             let isDown = fallenCones.includes(id);
             if (isDown) {{
                 ctx.fillStyle = "rgba(255,100,0,0.3)";
-                ctx.beginPath(); ctx.ellipse(x, y, 14*s, 5*s, 0, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(x, y, 14*s, 4*s, 0, 0, Math.PI*2); ctx.fill();
             }} else {{
                 ctx.fillStyle = "#ff6600";
                 ctx.beginPath(); ctx.moveTo(x-8*s, y); ctx.lineTo(x+8*s, y); ctx.lineTo(x, y-22*s); ctx.fill();
@@ -130,9 +152,11 @@ elif st.session_state.app_mode == 'TRAINING':
                     if (d > 3) {{ 
                         let vx = (dx/d)*player.speed, vy = (dy/d)*player.speed;
                         let margin = 20 * getScale(player.y);
-                        // BORDAS RÍGIDAS
+                        
+                        // BORDA RÍGIDA
                         if(player.x+vx > margin && player.x+vx < 320-margin) player.x += vx;
                         if(player.y+vy > 10 && player.y+vy < 450) player.y += vy;
+                        
                         ball.x += (player.x - ball.x) * 0.25;
                         ball.y += (player.y - 22*getScale(player.y) - ball.y) * 0.25;
                     }}
@@ -141,12 +165,15 @@ elif st.session_state.app_mode == 'TRAINING':
                 let phaseData = phases[currentPhase];
                 if(phaseData.enemies) {{
                     phaseData.enemies.forEach(e => {{
-                        e.x += e.speedX * e.dirX; e.y += e.speedY * e.dirY;
+                        e.x += e.speedX * e.dirX;
+                        e.y += e.speedY * e.dirY;
                         if (Math.abs(e.x - e.centerX) > e.rangeX/2) e.dirX *= -1;
                         if (e.type === 'D' && Math.abs(e.y - e.centerY) > e.rangeY/2) e.dirY *= -1;
+                        
                         if (Math.hypot(player.x - e.x, player.y - e.y) < 18*getScale(e.y)) {{
-                            score -= 0.7; player.hitTimer = 10;
-                            if(Math.floor(Date.now()/500) % 2 === 0) triggerHaptic(40);
+                            score -= 0.6;
+                            player.hitTimer = 10; // Efeito Hit
+                            if(Math.floor(Date.now()/500) % 2 === 0) triggerHaptic(50);
                         }}
                     }});
                 }}
@@ -195,20 +222,18 @@ elif st.session_state.app_mode == 'TRAINING':
             drawList.forEach(obj => {{
                 let s = getScale(obj.y);
                 if (obj.type === 'gate') {{
-                    let idA = `p${{currentPhase}}g${{obj.index}}a`, idB = `p${{currentPhase}}g${{obj.index}}b`;
-                    ctx.fillStyle = fallenCones.includes(idA) ? "rgba(255,100,0,0.3)" : "#ff6600";
-                    if(fallenCones.includes(idA)) {{ ctx.beginPath(); ctx.ellipse(obj.data.x1, obj.data.y, 14*s, 5*s, 0, 0, Math.PI*2); ctx.fill(); }}
-                    else {{ ctx.beginPath(); ctx.moveTo(obj.data.x1-8*s, obj.data.y); ctx.lineTo(obj.data.x1+8*s, obj.data.y); ctx.lineTo(obj.data.x1, obj.data.y-22*s); ctx.fill(); }}
-                    ctx.fillStyle = fallenCones.includes(idB) ? "rgba(255,100,0,0.3)" : "#ff6600";
-                    if(fallenCones.includes(idB)) {{ ctx.beginPath(); ctx.ellipse(obj.data.x2, obj.data.y, 14*s, 5*s, 0, 0, Math.PI*2); ctx.fill(); }}
-                    else {{ ctx.beginPath(); ctx.moveTo(obj.data.x2-8*s, obj.data.y); ctx.lineTo(obj.data.x2+8*s, obj.data.y); ctx.lineTo(obj.data.x2, obj.data.y-22*s); ctx.fill(); }}
+                    drawCone(obj.data.x1, obj.data.y, `p${{currentPhase}}g${{obj.index}}a`);
+                    drawCone(obj.data.x2, obj.data.y, `p${{currentPhase}}g${{obj.index}}b`);
+                    if (obj.index === currentGate && gameState === 'PLAYING') {{
+                        ctx.strokeStyle = direction === 1 ? "#ffd700" : "#0f0";
+                        ctx.setLineDash([5,5]); ctx.beginPath(); ctx.moveTo(obj.data.x1, obj.data.y); ctx.lineTo(obj.data.x2, obj.data.y); ctx.stroke(); ctx.setLineDash([]);
+                    }}
                 }} else if (obj.type === 'enemy') {{
                     ctx.fillStyle="#f00"; ctx.fillRect(obj.data.x-9*s, obj.data.y-28*s, 18*s, 22*s);
                 }} else if (obj.type === 'player') {{
                     let isHit = player.hitTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0;
                     ctx.fillStyle = isHit ? "#ff0000" : "#ffd700";
                     ctx.fillRect(player.x-8*s, player.y-30*s, 16*s, 25*s);
-                    ctx.fillStyle="#d2b48c"; ctx.beginPath(); ctx.arc(player.x, player.y-35*s, 7*s, 0, Math.PI*2); ctx.fill();
                 }} else if (obj.type === 'ball') {{
                     ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 6*s, 0, Math.PI*2); ctx.fill();
                 }}
@@ -221,25 +246,22 @@ elif st.session_state.app_mode == 'TRAINING':
             }}
 
             if(gameState === 'FINISHED') {{
-                ctx.fillStyle = "rgba(0,0,0,0.96)"; ctx.fillRect(0,0,320,460);
-                ctx.fillStyle = "#ffd700"; ctx.font = "bold 20px monospace"; ctx.textAlign = "center";
+                ctx.fillStyle = "rgba(0,0,0,0.95)"; ctx.fillRect(0,0,320,460);
+                ctx.fillStyle = "#ffd700"; ctx.font = "bold 18px monospace"; ctx.textAlign = "center";
                 ctx.fillText("RESUMO DE EVOLUÇÃO", 160, 140);
                 let fs = Math.floor(score);
-                ctx.font = "16px monospace"; ctx.fillText("SCORE FINAL: " + fs, 160, 170);
-                
-                if(fs >= 850) {{
-                    ctx.fillStyle = "#0f0"; ctx.fillText("NÍVEL Z (ELITE)", 160, 210);
-                    ctx.font = "12px monospace"; 
-                    ctx.fillText("+2.5 {', '.join(DNA_ATTRS)}", 160, 240);
-                    ctx.fillStyle = "#f44"; ctx.fillText("-1.5 {', '.join(TRAVA_ATTRS)}", 160, 260);
-                }} else if(fs >= 500) {{
-                    ctx.fillStyle = "#ffd700"; ctx.fillText("NÍVEL Y (TREINO)", 160, 210);
-                    ctx.font = "12px monospace"; 
-                    ctx.fillText("+1.0 {', '.join(DNA_ATTRS)}", 160, 240);
-                    ctx.fillStyle = "#f44"; ctx.fillText("-1.0 {', '.join(TRAVA_ATTRS)}", 160, 260);
-                }} else {{
-                    ctx.fillStyle = "#f00"; ctx.fillText("NÍVEL X (ABAIXO)", 160, 210);
-                    ctx.font = "12px monospace"; ctx.fillText("SEM EVOLUÇÃO NESTA SESSÃO", 160, 240);
+                ctx.font = "16px monospace"; ctx.fillText("SCORE: " + fs, 160, 175);
+                if(fs >= 850) {{ 
+                    ctx.fillStyle = "#0f0"; ctx.fillText("NÍVEL Z (ELITE)", 160, 215); 
+                    ctx.font="11px monospace"; ctx.fillText("+2.5 DNA", 160, 245); 
+                    ctx.fillStyle = "#f44"; ctx.fillText("-1.5 TRAVA", 160, 265);
+                }} else if(fs >= 500) {{ 
+                    ctx.fillStyle = "#ffd700"; ctx.fillText("NÍVEL Y (TREINO)", 160, 215); 
+                    ctx.font="11px monospace"; ctx.fillText("+1.0 DNA", 160, 245); 
+                    ctx.fillStyle = "#f44"; ctx.fillText("-1.0 TRAVA", 160, 265);
+                }} else {{ 
+                    ctx.fillStyle = "#f00"; ctx.fillText("NÍVEL X (ABAIXO)", 160, 215); 
+                    ctx.font="11px monospace"; ctx.fillText("SEM EVOLUÇÃO", 160, 245);
                 }}
             }}
 
@@ -250,8 +272,7 @@ elif st.session_state.app_mode == 'TRAINING':
         canvas.addEventListener('pointerdown', e => {{ 
             const r=canvas.getBoundingClientRect(); 
             if(Math.hypot(e.clientX-r.left-joy.x, e.clientY-r.top-joy.y)<60) {{ 
-                joy.active=true; 
-                if(audioCtx.state === 'suspended') audioCtx.resume(); 
+                joy.active=true; if(audioCtx.state === 'suspended') audioCtx.resume(); 
             }} 
         }});
         canvas.addEventListener('pointermove', e => {{ if(!joy.active) return; const r=canvas.getBoundingClientRect(); let dx=e.clientX-r.left-joy.x, dy=e.clientY-r.top-joy.y, d=Math.min(Math.hypot(dx,dy),45), a=Math.atan2(dy,dx); joy.currX=joy.x+Math.cos(a)*d; joy.currY=joy.y+Math.sin(a)*d; }});

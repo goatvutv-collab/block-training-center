@@ -189,4 +189,39 @@ elif st.session_state.app_mode == 'TRAINING':
                 let fs = Math.floor(score); ctx.fillText("SCORE: " + fs, 160, 175);
                 let gbr = (!missedAny && hits > 0);
                 if(fs >= 950) {{ ctx.fillStyle="#0f0"; ctx.fillText("NÍVEL Z (ELITE)", 160, 215); ctx.font="11px monospace"; ctx.fillText("+2.5 DNA", 160, 245); ctx.fillStyle="#f44"; ctx.fillText("-1.5 TRAVA", 160, 265); }}
-                else if(fs >= 600) {{ ctx.
+                else if(fs >= 600) {{ ctx.fillStyle="#ffd700"; ctx.fillText("NÍVEL Y (TREINO)", 160, 215); ctx.font="11px monospace"; ctx.fillText("+1.0 DNA", 160, 245); ctx.fillStyle="#f44"; ctx.fillText("-1.0 TRAVA", 160, 265); }}
+                else {{ ctx.fillStyle="#f00"; ctx.fillText("NÍVEL X (ABAIXO)", 160, 215); ctx.font="11px monospace"; ctx.fillText("SEM EVOLUÇÃO", 160, 245); }}
+                if(gbr) {{ ctx.fillStyle="#fff"; ctx.font="bold 12px monospace"; ctx.fillText("DOMÍNIO RÍTMICO: +1.0 EXTRA!", 160, 290); }}
+            }}
+        }}
+
+        canvas.addEventListener('pointerdown', e => {{
+            const r=canvas.getBoundingClientRect(); const x=e.clientX-r.left, y=e.clientY-r.top;
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            if(currentPhase < 4) {{ if(Math.hypot(x-joy.x, y-joy.y)<60) joy.active=true; }}
+            else {{
+                rBtns.forEach((b, i) => {{
+                    if(Math.hypot(x-b.x, y-b.y)<35) {{
+                        let h = false;
+                        rhythmNotes.forEach((n, ni) => {{
+                            if(n.type === i && n.x > 15 && n.x < 75) {{
+                                h = true; rhythmNotes.splice(ni, 1); hits++;
+                                let pts = rhythmTimer < 15 ? 10 : (rhythmTimer < 30 ? 20 : (rhythmTimer < 45 ? 30 : 50));
+                                score += pts; player.juggleY = 50; playWhistle(1000); triggerHaptic(50);
+                            }}
+                        }});
+                        if(!h) {{ score -= 10; missedAny = true; playWhistle(400); }}
+                    }}
+                }});
+            }}
+        }});
+        canvas.addEventListener('pointermove', e => {{ if(!joy.active) return; const r=canvas.getBoundingClientRect(); let dx=e.clientX-r.left-joy.x, dy=e.clientY-r.top-joy.y, d=Math.min(Math.hypot(dx,dy),45), a=Math.atan2(dy,dx); joy.currX=joy.x+Math.cos(a)*d; joy.currY=joy.y+Math.sin(a)*d; }});
+        canvas.addEventListener('pointerup', () => {{ joy.active=false; joy.currX=joy.x; joy.currY=joy.y; }});
+        initModule(1); update();
+    </script>
+    """
+    components.html(game_code, height=650)
+    if st.button("VOLTAR AO LOBBY", use_container_width=True):
+        st.session_state.app_mode = 'LOBBY'; st.rerun()
+
+st.sidebar.caption("GOAT TV FEDERATION © 2026")

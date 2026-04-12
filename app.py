@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import json
 
-# 1. CONFIGURAÇÃO INSTITUCIONAL
+# 1. CONFIGURAÇÃO INSTITUCIONAL GOAT TV
 st.set_page_config(page_title="GOAT TV - TRAINING CENTER", layout="centered", initial_sidebar_state="collapsed")
 
 # --- LÓGICA DE ARQUÉTIPOS ---
@@ -27,7 +27,7 @@ TREINOS_LOGIC = {
 if 'app_mode' not in st.session_state:
     st.session_state.app_mode = 'LOBBY'
 
-# --- TELA 1: LOBBY DE PREPARAÇÃO ---
+# --- TELA 1: LOBBY ---
 if st.session_state.app_mode == 'LOBBY':
     st.markdown("<h2 style='text-align: center; color: #ffd700;'>🏟️ LOBBY DE TREINAMENTO</h2>", unsafe_allow_html=True)
     st.write("---")
@@ -55,7 +55,6 @@ if st.session_state.app_mode == 'LOBBY':
 elif st.session_state.app_mode == 'TRAINING':
     tipo = st.session_state.tipo_selecionado
     
-    # Configuração dos Inimigos do Módulo 3: 2 Horizontais + 2 Diagonais
     fases_json = {
         "DRIBLE": """{
             1: {startPos:{x:160, y:410}, gates:[{x1:60,x2:120,y:320},{x1:60,x2:120,y:150},{x1:200,x2:260,y:150},{x1:200,x2:260,y:320}], enemies:[]},
@@ -63,10 +62,10 @@ elif st.session_state.app_mode == 'TRAINING':
             3: {startPos:{x:160, y:410}, 
                 gates:[{x1:220,x2:280,y:380},{x1:40,x2:100,y:300},{x1:220,x2:280,y:220},{x1:40,x2:100,y:140},{x1:130,x2:190,y:60}], 
                 enemies:[
-                    {x:100, y:300, range:120, speedX:1.5, speedY:0, dirX:1, dirY:0, type:'H'},
-                    {x:220, y:300, range:120, speedX:1.5, speedY:0, dirX:-1, dirY:0, type:'H'},
-                    {x:160, y:180, rangeX:100, rangeY:50, speedX:1.8, speedY:1, dirX:1, dirY:1, type:'D'},
-                    {x:160, y:120, rangeX:100, rangeY:50, speedX:1.8, speedY:1, dirX:-1, dirY:-1, type:'D'}
+                    {x:100, y:340, centerX:100, centerY:340, rangeX:120, rangeY:0, speedX:1.5, speedY:0, dirX:1, dirY:0, type:'H'},
+                    {x:220, y:340, centerX:220, centerY:340, rangeX:120, rangeY:0, speedX:1.5, speedY:0, dirX:-1, dirY:0, type:'H'},
+                    {x:160, y:180, centerX:160, centerY:180, rangeX:80, rangeY:40, speedX:1.2, speedY:0.8, dirX:1, dirY:1, type:'D'},
+                    {x:160, y:100, centerX:160, centerY:100, rangeX:80, rangeY:30, speedX:1.2, speedY:0.6, dirX:-1, dirY:-1, type:'D'}
                 ]}
         }""",
         "PASSE": "{1: {startPos:{x:160, y:410}, gates:[{x1:130,x2:190,y:100}]}, 2: {startPos:{x:160, y:410}, gates:[{x1:40,x2:100,y:150}]}, 3: {startPos:{x:160, y:410}, gates:[{x1:220,x2:280,y:150}]}}",
@@ -109,8 +108,8 @@ elif st.session_state.app_mode == 'TRAINING':
             let s = getScale(y);
             let isDown = fallenCones.includes(id);
             if (isDown) {{
-                ctx.fillStyle = "rgba(255,100,0,0.4)";
-                ctx.beginPath(); ctx.ellipse(x, y, 14*s, 5*s, 0, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "rgba(255,100,0,0.3)";
+                ctx.beginPath(); ctx.ellipse(x, y, 14*s, 4*s, 0, 0, Math.PI*2); ctx.fill();
             }} else {{
                 ctx.fillStyle = "#ff6600";
                 ctx.beginPath(); ctx.moveTo(x-8*s, y); ctx.lineTo(x+8*s, y); ctx.lineTo(x, y-22*s); ctx.fill();
@@ -135,8 +134,11 @@ elif st.session_state.app_mode == 'TRAINING':
                     if (d > 3) {{ 
                         let vx = (dx/d)*player.speed, vy = (dy/d)*player.speed;
                         let margin = 20 * getScale(player.y);
+                        
+                        // BORDA RÍGIDA (COLISÃO DO QUADRADO)
                         if(player.x+vx > margin && player.x+vx < 320-margin) player.x += vx;
                         if(player.y+vy > 10 && player.y+vy < 450) player.y += vy;
+                        
                         ball.x += (player.x - ball.x) * 0.25;
                         ball.y += (player.y - 22*getScale(player.y) - ball.y) * 0.25;
                     }}
@@ -147,20 +149,21 @@ elif st.session_state.app_mode == 'TRAINING':
                     phaseData.enemies.forEach(e => {{
                         e.x += e.speedX * e.dirX;
                         e.y += e.speedY * e.dirY;
-                        if (e.type === 'H') {{ if (Math.abs(e.x - 160) > e.range/2) e.dirX *= -1; }}
-                        else {{ 
-                            if (Math.abs(e.x - 160) > e.rangeX/2) e.dirX *= -1;
-                            if (Math.abs(e.y - (currentPhase === 3 ? e.y : 150)) > 30) e.dirY *= -1; // Diagonal real
-                        }}
-                        if (Math.hypot(player.x - e.x, player.y - e.y) < 18*getScale(e.y)) score -= 0.5;
+                        
+                        // BATE E VOLTA PARALELO AOS CONES
+                        if (Math.abs(e.x - e.centerX) > e.rangeX/2) e.dirX *= -1;
+                        if (e.type === 'D' && Math.abs(e.y - e.centerY) > e.rangeY/2) e.dirY *= -1;
+                        
+                        if (Math.hypot(player.x - e.x, player.y - e.y) < 18*getScale(e.y)) score -= 0.6;
                     }});
                 }}
 
                 let phaseGates = phaseData.gates;
                 phaseGates.forEach((g, i) => {{
                     let id1 = `p${{currentPhase}}g${{i}}a`, id2 = `p${{currentPhase}}g${{i}}b`;
-                    if (!fallenCones.includes(id1) && Math.hypot(player.x-g.x1, player.y-g.y) < 12*getScale(g.y)) {{ fallenCones.push(id1); score -= 50; }}
-                    if (!fallenCones.includes(id2) && Math.hypot(player.x-g.x2, player.y-g.y) < 12*getScale(g.y)) {{ fallenCones.push(id2); score -= 50; }}
+                    let s = getScale(g.y);
+                    if (!fallenCones.includes(id1) && Math.hypot(player.x-g.x1, player.y-g.y) < 12*s) {{ fallenCones.push(id1); score -= 50; }}
+                    if (!fallenCones.includes(id2) && Math.hypot(player.x-g.x2, player.y-g.y) < 12*s) {{ fallenCones.push(id2); score -= 50; }}
                 }});
 
                 let gate = phaseGates[currentGate];
@@ -181,6 +184,8 @@ elif st.session_state.app_mode == 'TRAINING':
         function render() {{
             ctx.fillStyle = '#1e3d1a'; ctx.fillRect(0,0,320,460);
             ctx.fillStyle = '#050505'; ctx.fillRect(0,460,320,140);
+            
+            // LINHAS DE PERSPECTIVA 2.5D
             ctx.strokeStyle = "rgba(255,255,255,0.08)";
             for(let i=-100; i<=420; i+=40) {{ ctx.beginPath(); ctx.moveTo(160, -80); ctx.lineTo(i*1.5-80, 460); ctx.stroke(); }}
 
@@ -204,27 +209,36 @@ elif st.session_state.app_mode == 'TRAINING':
                 }} else if (obj.type === 'enemy') {{
                     ctx.fillStyle="#f00"; ctx.fillRect(obj.data.x-9*s, obj.data.y-28*s, 18*s, 22*s);
                 }} else if (obj.type === 'player') {{
+                    ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(player.x, player.y, 12*s, 5*s, 0, 0, Math.PI*2); ctx.fill();
                     ctx.fillStyle="#ffd700"; ctx.fillRect(player.x-8*s, player.y-30*s, 16*s, 25*s);
                 }} else if (obj.type === 'ball') {{
-                    ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 6*s, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 6*s, 0, Math.PI*2); ctx.fill();
                 }}
             }});
 
             if(gameState === 'COUNTDOWN') {{
-                ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0,0,320,460);
+                ctx.fillStyle = "rgba(0,0,0,0.85)"; ctx.fillRect(0,0,320,460);
                 ctx.fillStyle = "#ffd700"; ctx.font = "bold 50px monospace"; ctx.textAlign = "center";
                 ctx.fillText(countdown, 160, 230);
             }}
-            
+
             if(gameState === 'FINISHED') {{
-                ctx.fillStyle = "rgba(0,0,0,0.9)"; ctx.fillRect(0,0,320,460);
-                ctx.fillStyle = "#ffd700"; ctx.font = "bold 22px monospace"; ctx.textAlign = "center";
-                ctx.fillText("TREINO CONCLUÍDO!", 160, 180);
-                ctx.font = "18px monospace"; ctx.fillText("SCORE: " + Math.floor(score), 160, 210);
-                ctx.font = "14px monospace";
-                if(score >= 850) {{ ctx.fillStyle = "#0f0"; ctx.fillText("NÍVEL Z: +2.5 DNA / -1.5 TRAVA", 160, 250); }}
-                else if(score >= 500) {{ ctx.fillStyle = "#ffd700"; ctx.fillText("NÍVEL Y: +1.0 DNA / -1.0 TRAVA", 160, 250); }}
-                else {{ ctx.fillStyle = "#f00"; ctx.fillText("NÍVEL X: SEM EVOLUÇÃO", 160, 250); }}
+                ctx.fillStyle = "rgba(0,0,0,0.95)"; ctx.fillRect(0,0,320,460);
+                ctx.fillStyle = "#ffd700"; ctx.font = "bold 20px monospace"; ctx.textAlign = "center";
+                ctx.fillText("RELATÓRIO DE DESEMPENHO", 160, 150);
+                let finalScore = Math.floor(score);
+                ctx.font = "18px monospace"; ctx.fillText("SCORE FINAL: " + finalScore, 160, 190);
+                
+                if(finalScore >= 850) {{
+                    ctx.fillStyle = "#0f0"; ctx.fillText("NÍVEL Z (ELITE)", 160, 230);
+                    ctx.font = "12px monospace"; ctx.fillText("+2.5 DNA / -1.5 TRAVA", 160, 255);
+                }} else if(finalScore >= 500) {{
+                    ctx.fillStyle = "#ffd700"; ctx.fillText("NÍVEL Y (TREINO)", 160, 230);
+                    ctx.font = "12px monospace"; ctx.fillText("+1.0 DNA / -1.0 TRAVA", 160, 255);
+                }} else {{
+                    ctx.fillStyle = "#f00"; ctx.fillText("NÍVEL X (ABAIXO)", 160, 230);
+                    ctx.font = "12px monospace"; ctx.fillText("SEM EVOLUÇÃO NESTA SESSÃO", 160, 255);
+                }}
             }}
 
             ctx.beginPath(); ctx.arc(joy.x, joy.y, 45, 0, Math.PI*2); ctx.strokeStyle='#ffd700'; ctx.stroke();

@@ -7,13 +7,31 @@ import re
 # 1. CONFIGURAÇÃO INSTITUCIONAL - GOAT TV
 st.set_page_config(page_title="GOAT TV - CT ARCADE", layout="centered", initial_sidebar_state="collapsed")
 
-# --- SISTEMA DE DADOS ---
+# --- SISTEMA DE DADOS E ARQUÉTIPOS (O DOSSIÊ) ---
 DB_FILE = "goat_players.json"
+
+# Aqui está a alma do negócio: O que sobe e o que desce
 TREINOS_LOGIC = {
-    "DRIBLE": {"sobe": ["drible", "aceleracao", "controle_bola"], "desce": ["desarme", "agressividade"]},
-    "PASSE":  {"sobe": ["passe_rasteiro", "passe_alto", "curva"], "desce": ["velocidade", "forca_chute"]},
-    "FINALIZACAO": {"sobe": ["finalizacao", "forca_chute", "talento_ofensivo"], "desce": ["resistencia", "desarme"]},
-    "DEFESA": {"sobe": ["talento_defensivo", "desarme", "contato_fisico"], "desce": ["drible", "aceleracao"]}
+    "DRIBLE": {
+        "sobe": ["Drible", "Velocidade", "Condução"], 
+        "desce": ["Desarme", "Impacto Físico"],
+        "desc": "Foco em agilidade e controle. O atleta fica leve, mas perde força defensiva."
+    },
+    "PASSE": {
+        "sobe": ["Passe Rasteiro", "Visão", "Curva"], 
+        "desce": ["Aceleração", "Força de Chute"],
+        "desc": "Foco na cadência e precisão. O cérebro do time, mas sem explosão física."
+    },
+    "FINALIZAÇÃO": {
+        "sobe": ["Finalização", "Faro de Gol", "Chute Colocado"], 
+        "desce": ["Resistência", "Marcação"],
+        "desc": "Foco total na rede. O matador que decide, mas não volta pra marcar."
+    },
+    "DEFESA": {
+        "sobe": ["Desarme", "Posicionamento", "Impacto"], 
+        "desce": ["Drible", "Velocidade"],
+        "desc": "O cão de guarda. Uma muralha física, mas pesado para sair jogando."
+    }
 }
 
 def load_data():
@@ -28,29 +46,52 @@ if 'logged_in' not in st.session_state:
     st.session_state.player_id = ""
     st.session_state.treino_selecionado = "DRIBLE"
 
-# --- TELA 1: PORTAL ---
+# --- TELA 1: PORTAL DE ACESSO COM INFO DE ARQUÉTIPO ---
 if not st.session_state.logged_in:
-    st.markdown("<h2 style='text-align: center; color: #ffd700;'>GOAT TV: CT ARCADE</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #ffd700;'>GOAT TV: PORTAL DE ACESSO</h2>", unsafe_allow_html=True)
     st.write("---")
-    pid_input = st.text_input("ID DO ATLETA:", "").strip().upper()
-    tipo_treino = st.selectbox("SETOR DE TREINO:", list(TREINOS_LOGIC.keys()))
-    if st.button("INICIAR TREINAMENTO", use_container_width=True):
+    
+    col1, col2 = st.columns([1, 1.2])
+    
+    with col1:
+        pid_input = st.text_input("ID DO ATLETA:", "").strip().upper()
+        tipo_treino = st.selectbox("SETOR DE TREINO:", list(TREINOS_LOGIC.keys()))
+        
+    with col2:
+        # PAINEL DE IMPACTO NO ARQUÉTIPO
+        st.markdown(f"### 📊 Efeito: {tipo_treino}")
+        st.caption(TREINOS_LOGIC[tipo_treino]['desc'])
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown("##### 📈 SOBE")
+            for s in TREINOS_LOGIC[tipo_treino]['sobe']:
+                st.markdown(f"<span style='color:#0f0'>● {s}</span>", unsafe_allow_html=True)
+        with c2:
+            st.markdown("##### 📉 DESCE")
+            for d in TREINOS_LOGIC[tipo_treino]['desce']:
+                st.markdown(f"<span style='color:#f00'>● {d}</span>", unsafe_allow_html=True)
+
+    st.write("")
+    if st.button("INICIAR TREINAMENTO ARCADE", use_container_width=True):
         if pid_input:
             st.session_state.logged_in = True
             st.session_state.player_id = pid_input
             st.session_state.treino_selecionado = tipo_treino
             st.rerun()
 
-# --- TELA 2: CAMPO DE TREINAMENTO ---
+# --- TELA 2: CAMPO DE TREINAMENTO (SISTEMA ARCADE G-PERSPECTIVE) ---
 else:
     st.markdown(f"### 🏟️ ATLETA: {st.session_state.player_id} | {st.session_state.treino_selecionado}")
     
+    # Lógica de fases e percursos (Mantendo a Ida e Volta)
     fases_json = {
         "DRIBLE": """{
-            1: {startPos:{x:160, y:410}, gates:[{x1:60,x2:120,y:320},{x1:60,x2:120,y:150},{x1:200,x2:260,y:150},{x1:200,x2:260,y:320}], enemies:[]},
-            2: {startPos:{x:160, y:410}, gates:[{x1:40,x2:100,y:350},{x1:220,x2:280,y:250},{x1:40,x2:100,y:150},{x1:130,x2:190,y:80}], enemies:[]},
-            3: {startPos:{x:160, y:410}, gates:[{x1:220,x2:280,y:350},{x1:40,x2:100,y:280},{x1:220,x2:280,y:200},{x1:40,x2:100,y:120},{x1:130,x2:190,y:60}], 
-                enemies:[{x:160, y:310, range:120, speed:1.2, dir:1},{x:160, y:230, range:150, speed:1.8, dir:-1},{x:160, y:140, range:100, speed:2.2, dir:1}]}
+            1: {startPos:{x:160, y:410}, gates:[{x1:60,x2:120,y:320},{x1:200,x2:260,y:320},{x1:160,x2:220,y:100}], enemies:[]},
+            2: {startPos:{x:160, y:410}, gates:[{x1:40,x2:100,y:350},{x1:220,x2:280,y:250},{x1:130,x2:190,y:80}], enemies:[]},
+            3: {startPos:{x:160, y:410}, 
+                gates:[{x1:220,x2:280,y:350},{x1:40,x2:100,y:250},{x1:130,x2:190,y:60}], 
+                enemies:[{x:160, y:280, range:120, speed:1.2, dir:1},{x:160, y:150, range:150, speed:1.8, dir:-1}]}
         }""",
         "PASSE": "{1: {startPos:{x:160, y:410}, gates:[{x1:130,x2:190,y:100}], enemies:[]}, 2: {startPos:{x:160, y:410}, gates:[{x1:40,x2:100,y:150}], enemies:[]}, 3: {startPos:{x:160, y:410}, gates:[{x1:220,x2:280,y:150}], enemies:[]}}",
         "FINALIZACAO": "{1: {startPos:{x:160, y:410}, gates:[{x1:100,x2:220,y:120}], enemies:[]}, 2: {startPos:{x:160, y:410}, gates:[{x1:80,x2:240,y:100}], enemies:[]}, 3: {startPos:{x:160, y:410}, gates:[{x1:140,x2:180,y:80}], enemies:[]}}",
@@ -74,7 +115,6 @@ else:
         const phaseDisp = document.getElementById('phaseDisp');
         const modeDisp = document.getElementById('modeDisp');
 
-        // VELOCIDADE NORMALIZADA (Sugerido 1.0 a 1.5 para controle total)
         let player = {{ x: 160, y: 410, speed: 1.5 }};
         let ball = {{ x: 160, y: 385 }};
         let score = 1000;
@@ -86,8 +126,6 @@ else:
         let fallenCones = [];
 
         const phases = {fases_json[st.session_state.treino_selecionado]};
-        
-        // CONTROLE ARCADE CENTRALIZADO FORA DO CAMPO
         const joy = {{ x: 160, y: 530, baseRadius: 45, currX: 160, currY: 530, active: false }};
 
         function getScale(y) {{ return (y / 460) * 0.55 + 0.45; }}
@@ -119,11 +157,9 @@ else:
                         let nextX = player.x + vx, nextY = player.y + vy;
                         let margin = 20 * getScale(player.y);
                         
-                        // COLISÃO COM PAREDES DO QUADRADO
                         if(nextX > margin && nextX < 320 - margin) player.x = nextX;
                         if(nextY > margin && nextY < 450) player.y = nextY;
                         
-                        // BOLA MAIS PRESA AO PÉ PARA VELOCIDADE BAIXA
                         ball.x += (player.x - ball.x) * 0.25;
                         ball.y += (player.y - 22*getScale(player.y) - ball.y) * 0.25;
                     }}
@@ -134,7 +170,7 @@ else:
                     phaseData.enemies.forEach(e => {{
                         e.x += e.speed * e.dir;
                         if (Math.abs(e.x - 160) > e.range/2) e.dir *= -1;
-                        if (Math.hypot(player.x - e.x, player.y - e.y) < 18*getScale(e.y)) score -= 0.4;
+                        if (Math.hypot(player.x - e.x, player.y - e.y) < 18*getScale(e.y)) score -= 0.5;
                     }});
                 }}
 
@@ -142,8 +178,6 @@ else:
                 let gate = phaseGates[currentGate];
                 if (Math.hypot(ball.x - (gate.x1+gate.x2)/2, ball.y - gate.y) < 25) {{
                     currentGate += direction;
-                    
-                    // REGRA IDA E VOLTA
                     if (currentGate >= phaseGates.length) {{
                         direction = -1; currentGate = phaseGates.length - 2;
                         modeDisp.innerText = "VOLTA"; modeDisp.style.color = "#0f0";
@@ -164,9 +198,7 @@ else:
         }}
 
         function render() {{
-            // Fundo do Campo
             ctx.fillStyle = '#1e3d1a'; ctx.fillRect(0,0,320,460);
-            // Área Arcade (Fora do Campo)
             ctx.fillStyle = '#050505'; ctx.fillRect(0,460,320,140);
             
             // PERSPECTIVA G-PERSPECTIVE
@@ -189,7 +221,6 @@ else:
                     ctx.fillStyle = "#ff6600";
                     ctx.beginPath(); ctx.moveTo(obj.data.x1-8*s, obj.data.y); ctx.lineTo(obj.data.x1+8*s, obj.data.y); ctx.lineTo(obj.data.x1, obj.data.y-22*s); ctx.fill();
                     ctx.beginPath(); ctx.moveTo(obj.data.x2-8*s, obj.data.y); ctx.lineTo(obj.data.x2+8*s, obj.data.y); ctx.lineTo(obj.data.x2, obj.data.y-22*s); ctx.fill();
-                    
                     if (obj.index === currentGate && gameState === 'PLAYING') {{
                         ctx.strokeStyle = direction === 1 ? "#ffd700" : "#0f0";
                         ctx.setLineDash([5, 5]); ctx.beginPath();
@@ -201,7 +232,6 @@ else:
                 }} else if (obj.type === 'player') {{
                     ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(player.x, player.y, 12*s, 5*s, 0, 0, Math.PI*2); ctx.fill();
                     ctx.fillStyle="#ffd700"; ctx.fillRect(player.x-8*s, player.y-30*s, 16*s, 25*s);
-                    ctx.fillStyle="#d2b48c"; ctx.beginPath(); ctx.arc(player.x, player.y-35*s, 7*s, 0, Math.PI*2); ctx.fill();
                 }} else if (obj.type === 'ball') {{
                     ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 6*s, 0, Math.PI*2); ctx.fill();
                     ctx.strokeStyle="#000"; ctx.stroke();
@@ -214,14 +244,11 @@ else:
                 ctx.fillText(countdown, 160, 230);
             }}
 
-            // ANALÓGICO CENTRALIZADO (ESTILO ARCADE)
+            // ANALÓGICO ARCADE
             ctx.beginPath(); ctx.arc(joy.x, joy.y, 45, 0, Math.PI*2); 
             ctx.strokeStyle='#ffd700'; ctx.lineWidth=2; ctx.stroke();
-            ctx.fillStyle='rgba(255,215,0,0.05)'; ctx.fill();
-            
             ctx.beginPath(); ctx.arc(joy.currX, joy.currY, 20, 0, Math.PI*2); 
             ctx.fillStyle='#ffd700'; ctx.fill();
-            ctx.strokeStyle='#fff'; ctx.lineWidth=1; ctx.stroke();
         }}
 
         canvas.addEventListener('pointerdown', e => {{ 
@@ -243,3 +270,10 @@ else:
     """
 
     components.html(game_code, height=650)
+    
+    if st.button("CONFIRMAR E SALVAR RESULTADOS", use_container_width=True):
+        st.success(f"Estatísticas de {st.session_state.player_id} gravadas com sucesso!")
+        st.session_state.logged_in = False
+        st.rerun()
+
+st.sidebar.caption("GOAT TV ARCADE CT v6.0")

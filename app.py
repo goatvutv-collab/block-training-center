@@ -5,10 +5,11 @@ import os
 import re
 
 # 1. CONFIGURAÇÃO INSTITUCIONAL - GOAT TV
-st.set_page_config(page_title="GOAT TV - CT PERSPECTIVA", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="GOAT TV - CT G-PERSPECTIVE", layout="centered", initial_sidebar_state="collapsed")
 
-# --- SISTEMA DE DADOS ---
+# --- SISTEMA DE DADOS E ARQUÉTIPOS ---
 DB_FILE = "goat_players.json"
+
 TREINOS_LOGIC = {
     "DRIBLE": {"sobe": ["drible", "aceleracao", "controle_bola"], "desce": ["desarme", "agressividade"]},
     "PASSE":  {"sobe": ["passe_rasteiro", "passe_alto", "curva"], "desce": ["velocidade", "forca_chute"]},
@@ -31,20 +32,26 @@ if 'logged_in' not in st.session_state:
     st.session_state.player_id = ""
     st.session_state.treino_selecionado = "DRIBLE"
 
-# --- TELA 1: PORTAL ---
+# --- TELA 1: PORTAL DE ACESSO ---
 if not st.session_state.logged_in:
-    st.markdown("<h2 style='text-align: center; color: #ffd700;'>GOAT TV: PORTAL DE ACESSO</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center; color: #ffd700; font-family: sans-serif;'>GOAT TV: PORTAL DE ACESSO</h2>", unsafe_allow_html=True)
     st.write("---")
-    pid_input = st.text_input("ID DO ATLETA:", "").strip().upper()
-    tipo_treino = st.selectbox("SETOR:", list(TREINOS_LOGIC.keys()))
-    if st.button("INICIAR TREINAMENTO"):
-        if pid_input:
+    col1, col2 = st.columns(2)
+    with col1:
+        pid_input = st.text_input("ID DO ATLETA:", "").strip().upper()
+    with col2:
+        tipo_treino = st.selectbox("SETOR DE TREINO:", list(TREINOS_LOGIC.keys()))
+    
+    if st.button("INICIAR TREINAMENTO", use_container_width=True):
+        if pid_input and bool(re.match("^[a-zA-Z0-9]*$", pid_input)):
             st.session_state.logged_in = True
             st.session_state.player_id = pid_input
             st.session_state.treino_selecionado = tipo_treino
             st.rerun()
+        else:
+            st.error("ID Inválido.")
 
-# --- TELA 2: CAMPO DE TREINAMENTO ---
+# --- TELA 2: CAMPO DE TREINAMENTO (G-PERSPECTIVE 2.5D ATUALIZADO) ---
 else:
     st.markdown(f"### 🏟️ ATLETA: {st.session_state.player_id} | SETOR: {st.session_state.treino_selecionado}")
     
@@ -61,12 +68,13 @@ else:
     }
 
     game_code = f"""
-    <div style="display: flex; justify-content: center; flex-direction: column; align-items: center;">
-        <div id="hud" style="color: white; font-family: monospace; margin-bottom: 5px; font-size: 11px; background: #000; padding: 5px 15px; border: 1px solid #ffd700; border-radius: 10px; width: 310px; display: flex; justify-content: space-between;">
+    <div style="display: flex; justify-content: center; align-items: center; flex-direction: column;">
+        <div id="hud" style="color: white; font-family: monospace; margin-bottom: 8px; font-size: 11px; background: rgba(0,0,0,0.9); padding: 5px 15px; border-radius: 20px; border: 1px solid #ffd700; width: 300px; display: flex; justify-content: space-between;">
+            <span>ID: <b style="color: #ffd700;">{st.session_state.player_id}</b></span>
             <span>ETAPA: <b id="phaseDisp" style="color: #0f0;">1/3</b></span>
             <span>SCORE: <b id="scoreDisp" style="color: #0f0;">1000</b></span>
         </div>
-        <canvas id="gameCanvas" width="320" height="460" style="background: #1e3d1a; border: 5px solid #222; border-radius: 5px;"></canvas>
+        <canvas id="gameCanvas" width="320" height="460" style="background: #1e3d1a; border: 4px solid #333; border-radius: 10px; touch-action: none;"></canvas>
     </div>
 
     <script>
@@ -75,17 +83,21 @@ else:
         const scoreDisp = document.getElementById('scoreDisp');
         const phaseDisp = document.getElementById('phaseDisp');
 
-        const phases = {fases_json[st.session_state.treino_selecionado]};
-        let currentPhase = 1;
-        let gameState = 'COUNTDOWN'; // PLAYING, COUNTDOWN, FINISHED
-        let countdown = 3;
-        let score = 1000;
+        // VELOCIDADE CONTROLADA
         let player = {{ x: 160, y: 410, speed: 2.8 }};
         let ball = {{ x: 160, y: 385 }};
+        let score = 1000;
+        let currentPhase = 1;
         let currentGate = 0;
+        let direction = 1; 
+        let gameState = 'COUNTDOWN'; // PLAYING, COUNTDOWN, FINISHED
+        let countdown = 3;
         let fallenCones = [];
-        let joy = {{ x: 60, y: 385, baseRadius: 35, currX: 60, currY: 385, active: false }};
 
+        const phases = {fases_json[st.session_state.treino_selecionado]};
+        const joy = {{ x: 60, y: 385, baseRadius: 35, currX: 60, currY: 385, active: false }};
+
+        // A LINHA MÁGICA DA PERSPECTIVA GOAT TV
         function getScale(y) {{ return (y / 460) * 0.55 + 0.45; }}
 
         function initModule(phase) {{
@@ -97,6 +109,7 @@ else:
             ball.x = player.x;
             ball.y = player.y - 25;
             currentGate = 0;
+             fallenCones = [];
             
             let timer = setInterval(() => {{
                 countdown--;
@@ -105,13 +118,15 @@ else:
         }}
 
         function update() {{
+            if (gameState === 'FINISHED') return;
+
             if (gameState === 'PLAYING') {{
                 if (joy.active) {{
                     let dx = joy.currX - joy.x, dy = joy.currY - joy.y, d = Math.hypot(dx, dy);
                     if (d > 0) {{
                         let vx = (dx/d)*player.speed, vy = (dy/d)*player.speed;
                         
-                        // COLISÃO COM PAREDE (Limites do Quadrado)
+                        // COLISÃO COM PAREDE E LIMITES DO CANÁRIO G-PERSPECTIVE
                         let nextX = player.x + vx;
                         let nextY = player.y + vy;
                         let margin = 15 * getScale(player.y);
@@ -132,14 +147,24 @@ else:
                     }});
                 }}
 
-                let gate = phaseData.gates[currentGate];
+                // Cones Colisão
+                let phaseGates = phaseData.gates;
+                phaseGates.forEach((g, i) => {{
+                    let id1 = `p${{currentPhase}}g${{i}}a`, id2 = `p${{currentPhase}}g${{i}}b`;
+                    let s = getScale(g.y);
+                    if (!fallenCones.includes(id1) && Math.hypot(player.x-g.x1, player.y-g.y) < 14*s) {{ fallenCones.push(id1); score -= 50; }}
+                    if (!fallenCones.includes(id2) && Math.hypot(player.x-g.x2, player.y-g.y) < 14*s) {{ fallenCones.push(id2); score -= 50; }}
+                }});
+
+                // Passagem de Portão e Troca de Módulo
+                let gate = phaseGates[currentGate];
                 if (Math.hypot(ball.x - (gate.x1+gate.x2)/2, ball.y - gate.y) < 25) {{
                     currentGate++;
-                    if (currentGate >= phaseData.gates.length) {{
+                    if (currentGate >= phaseGates.length) {{
                         if (currentPhase < 3) {{
                             currentPhase++;
                             phaseDisp.innerText = currentPhase + "/3";
-                            initModule(currentPhase);
+                            initModule(currentPhase); // VOLTA PARA BAIXO E CONTAGEM
                         }} else {{
                             gameState = 'FINISHED';
                             alert("FIM DE TREINO! SCORE: " + Math.floor(score));
@@ -147,6 +172,7 @@ else:
                     }}
                 }}
             }}
+            scoreDisp.innerText = Math.floor(score);
             render();
             requestAnimationFrame(update);
         }}
@@ -154,9 +180,11 @@ else:
         function render() {{
             ctx.fillStyle = '#1e3d1a'; ctx.fillRect(0,0,320,460);
             
-            // Desenho do Gramado e Paredes Visuais
-            ctx.strokeStyle = "rgba(0,0,0,0.5)"; ctx.lineWidth = 10;
-            ctx.strokeRect(0,0,320,460); // Moldura do campo
+            // Desenho do Gramado (G-PERSPECTIVE 2.5D)
+            ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
+            for(let i=-50; i<=370; i+=40) {{
+                ctx.beginPath(); ctx.moveTo(160, -80); ctx.lineTo(i*1.5 - 80, 460); ctx.stroke();
+            }}
 
             let phaseData = phases[currentPhase];
             let drawList = [];
@@ -169,20 +197,27 @@ else:
             drawList.forEach(obj => {{
                 let s = getScale(obj.y);
                 if (obj.type === 'gate') {{
-                    ctx.fillStyle = "#ff6600";
-                    ctx.fillRect(obj.data.x1-5*s, obj.data.y-5*s, 10*s, 10*s);
-                    ctx.fillRect(obj.data.x2-5*s, obj.data.y-5*s, 10*s, 10*s);
-                    if(obj.index === currentGate) {{
-                        ctx.strokeStyle="#0f0"; ctx.setLineDash([5,5]);
+                    // Desenho dos Cones com Distorção de Perspectiva
+                    ctx.fillStyle = fallenCones.includes(`p${{currentPhase}}g${{obj.index}}a`) ? "rgba(0,0,0,0.2)" : "#ff6600";
+                    ctx.beginPath(); ctx.moveTo(obj.data.x1-8*s, obj.data.y); ctx.lineTo(obj.data.x1+8*s, obj.data.y); ctx.lineTo(obj.data.x1, obj.data.y-22*s); ctx.fill();
+                    ctx.fillStyle = fallenCones.includes(`p${{currentPhase}}g${{obj.index}}b`) ? "rgba(0,0,0,0.2)" : "#ff6600";
+                    ctx.beginPath(); ctx.moveTo(obj.data.x2-8*s, obj.data.y); ctx.lineTo(obj.data.x2+8*s, obj.data.y); ctx.lineTo(obj.data.x2, obj.data.y-22*s); ctx.fill();
+                    
+                    if (obj.index === currentGate && gameState === 'PLAYING') {{
+                        ctx.strokeStyle = "rgba(0,255,0,0.5)"; ctx.setLineDash([5, 5]);
                         ctx.beginPath(); ctx.moveTo(obj.data.x1, obj.data.y); ctx.lineTo(obj.data.x2, obj.data.y); ctx.stroke();
                         ctx.setLineDash([]);
                     }}
-                }} else if (obj.type === 'player') {{
-                    ctx.fillStyle="#ffd700"; ctx.fillRect(player.x-8*s, player.y-25*s, 16*s, 22*s);
                 }} else if (obj.type === 'enemy') {{
-                    ctx.fillStyle="#f00"; ctx.fillRect(obj.data.x-8*s, obj.data.y-25*s, 16*s, 22*s);
+                    ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(obj.data.x, obj.data.y, 14*s, 6*s, 0, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle="#f00"; ctx.fillRect(obj.data.x-9*s, obj.data.y-28*s, 18*s, 22*s);
+                }} else if (obj.type === 'player') {{
+                    ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(player.x, player.y, 12*s, 5*s, 0, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle="#ffd700"; ctx.fillRect(player.x-8*s, player.y-28*s, 16*s, 22*s);
+                    ctx.fillStyle="#d2b48c"; ctx.beginPath(); ctx.arc(player.x, player.y-35*s, 7*s, 0, Math.PI*2); ctx.fill();
                 }} else if (obj.type === 'ball') {{
-                    ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 6*s, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 6*s, 0, Math.PI*2); ctx.fill();
+                    ctx.strokeStyle="#000"; ctx.lineWidth=1; ctx.stroke();
                 }}
             }});
 

@@ -1,9 +1,8 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import json
 
-# 1. CONFIGURAÇÃO GOAT TV
-st.set_page_config(page_title="GOAT TV - CT ARCADE v19", layout="centered", initial_sidebar_state="collapsed")
+# 1. CONFIGURAÇÃO INSTITUCIONAL
+st.set_page_config(page_title="GOAT TV - CT ARCADE v19.1", layout="centered", initial_sidebar_state="collapsed")
 
 DNA_ATTRS = ["Condução", "Velocidade", "Drible"]
 TRAVA_ATTRS = ["Desarme", "Impacto Físico"]
@@ -21,10 +20,10 @@ if st.session_state.app_mode == 'LOBBY':
             st.session_state.tipo_selecionado = tipo_treino
             st.session_state.app_mode = 'TRAINING'; st.rerun()
     with col2:
-        st.markdown("### 📊 Evolução")
+        st.markdown("### 📊 Evolução de Arquétipo")
         st.success("📈 DNA: " + ", ".join(DNA_ATTRS))
         st.error("📉 TRAVA: " + ", ".join(TRAVA_ATTRS))
-        st.info("💡 NOVO: Módulo 4 de Ritmo (60s). Gabarite para ganhar +1.0 de Proficiência!")
+        st.info("💡 Combo: M1(U) + M2(Zig) + M3(Gauntlet) + M4(Ritmo)!")
 
 # --- TELA 2: CAMPO DE TREINAMENTO ---
 elif st.session_state.app_mode == 'TRAINING':
@@ -58,15 +57,22 @@ elif st.session_state.app_mode == 'TRAINING':
         let currentGate = 0; let direction = 1; let gameState = 'COUNTDOWN'; let countdown = 3;
         let fallenCones = []; 
         
-        // RHYTHM VARS
+        // RHYTHM SYSTEM
         let rhythmNotes = []; let rhythmTimer = 0; let missedAny = false; let totalSpawned = 0; let hits = 0;
 
+        // --- FASES RECUPERADAS (A BASE PERFEITA) ---
         const phases = {{
             1: {{ startPos:{{x:160, y:410}}, gates:[{{x1:60,x2:120,y:320}},{{x1:60,x2:120,y:150}},{{x1:200,x2:260,y:150}},{{x1:200,x2:260,y:320}}], enemies:[] }},
             2: {{ startPos:{{x:160, y:410}}, gates:[{{x1:40,x2:100,y:350}},{{x1:220,x2:280,y:250}},{{x1:40,x2:100,y:150}},{{x1:130,x2:190,y:80}}], enemies:[] }},
-            3: {{ startPos:{{x:160, y:410}}, gates:[{{x1:220,x2:280,y:380}},{{x1:40,x2:100,y:300}},{{x1:220,x2:280,y:220}},{{x1:40,x2:100,y:140}},{{x1:130,x2:190,y:60}}], 
-                enemies:[{{x:100,y:340,cx:100,cy:340,rx:120,ry:0,sx:1.5,sy:0,dx:1,dy:0,t:'H'}},{{x:220,y:340,cx:220,cy:340,rx:120,ry:0,sx:1.5,sy:0,dx:-1,dy:0,t:'H'}},
-                         {{x:160,y:180,cx:160,cy:180,rx:90,ry:45,sx:1.3,sy:0.8,dx:1,dy:1,t:'D'}},{{x:160,y:100,cx:160,cy:100,rx:90,ry:35,sx:1.3,sy:0.6,dx:-1,dy:-1,t:'D'}}] }},
+            3: {{ startPos:{{x:160, y:410}}, 
+                gates:[{{x1:220,x2:280,y:380}},{{x1:40,x2:100,y:300}},{{x1:220,x2:280,y:220}},{{x1:40,x2:100,y:140}},{{x1:130,x2:190,y:60}}], 
+                enemies:[
+                    {{x:100, y:340, cx:100, cy:340, rx:120, ry:0, sx:1.5, sy:0, dx:1, dy:0, t:'H'}},
+                    {{x:220, y:340, cx:220, cy:340, rx:120, ry:0, sx:1.5, sy:0, dx:-1, dy:0, t:'H'}},
+                    {{x:160, y:180, cx:160, cy:180, rx:90, ry:45, sx:1.3, sy:0.8, dx:1, dy:1, t:'D'}},
+                    {{x:160, y:100, cx:160, cy:100, rx:90, ry:35, sx:1.3, sy:0.6, dx:-1, dy:-1, t:'D'}}
+                ]
+            }},
             4: {{ startPos:{{x:160, y:300}}, isRhythm: true }}
         }};
 
@@ -98,6 +104,7 @@ elif st.session_state.app_mode == 'TRAINING':
                         if (d > 3) {{ 
                             let vx = (dx/d)*player.speed, vy = (dy/d)*player.speed;
                             let margin = 20 * (player.y/460*0.55+0.45);
+                            // CONFINAMENTO RÍGIDO
                             if(player.x+vx > margin && player.x+vx < 320-margin) player.x += vx;
                             if(player.y+vy > 10 && player.y+vy < 450) player.y += vy;
                             ball.x += (player.x - ball.x) * 0.25; ball.y += (player.y - 22*(player.y/460*0.55+0.45) - ball.y) * 0.25;
@@ -120,7 +127,7 @@ elif st.session_state.app_mode == 'TRAINING':
                         if(currentGate >= pd.gates.length) {{ direction=-1; currentGate=pd.gates.length-2; modeDisp.innerText="VOLTA"; }}
                         else if(currentGate < 0) initModule(currentPhase + 1);
                     }}
-                }} else {{ // MODULO 4: RITMO
+                }} else {{ // MODULO 4: RITMO (60 SEGUNDOS)
                     rhythmTimer += 1/60; if(rhythmTimer >= 60) gameState = 'FINISHED';
                     let spawnInterval = rhythmTimer < 15 ? 50 : (rhythmTimer < 30 ? 35 : (rhythmTimer < 45 ? 25 : 18));
                     if(Math.floor(rhythmTimer*60) % spawnInterval === 0) spawnNote();
@@ -154,18 +161,19 @@ elif st.session_state.app_mode == 'TRAINING':
                     ctx.fillStyle = fallenCones.includes(idB) ? "rgba(255,100,0,0.3)" : "#ff6600";
                     if(fallenCones.includes(idB)) {{ ctx.beginPath(); ctx.ellipse(g.x2, g.y, 14*s, 5*s, 0, 0, Math.PI*2); ctx.fill(); }}
                     else {{ ctx.beginPath(); ctx.moveTo(g.x2-8*s, g.y); ctx.lineTo(g.x2+8*s, g.y); ctx.lineTo(g.x2, g.y-22*s); ctx.fill(); }}
+                    if(i===currentGate && gameState==='PLAYING') {{ ctx.strokeStyle=direction===1?"#ffd700":"#0f0"; ctx.setLineDash([5,5]); ctx.beginPath(); ctx.moveTo(g.x1, g.y); ctx.lineTo(g.x2, g.y); ctx.stroke(); ctx.setLineDash([]); }}
                 }});
+                if(pd.enemies) pd.enemies.forEach(e => {{ ctx.fillStyle="#f00"; ctx.fillRect(e.x-9, e.y-28, 18, 22); }});
                 ctx.fillStyle = player.hitTimer > 0 && Math.floor(Date.now()/80)%2===0 ? "#f00" : "#ffd700";
                 ctx.fillRect(player.x-8, player.y-30, 16, 25);
                 ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 6, 0, Math.PI*2); ctx.fill();
                 ctx.beginPath(); ctx.arc(joy.x, joy.y, 45, 0, Math.PI*2); ctx.strokeStyle='#ffd700'; ctx.stroke();
                 ctx.beginPath(); ctx.arc(joy.currX, joy.currY, 20, 0, Math.PI*2); ctx.fillStyle='#ffd700'; ctx.fill();
             }} else {{ // RHYTHM VIEW
-                ctx.fillStyle="rgba(255,255,255,0.05)"; ctx.fillRect(0, 100, 320, 50); // Lane
+                ctx.fillStyle="rgba(255,255,255,0.05)"; ctx.fillRect(0, 100, 320, 50);
                 const gls = ["←", "↑", "↓", "→"];
                 gls.forEach((g, i) => {{ ctx.fillStyle="rgba(255,255,255,0.2)"; ctx.font="bold 25px Arial"; ctx.fillText(g, 25 + i*15, 135); }});
                 rhythmNotes.forEach(n => {{ ctx.fillStyle="#0f0"; ctx.font="bold 30px Arial"; ctx.fillText(gls[n.type], n.x, 135); }});
-                // Pernas e Bola
                 ctx.fillStyle="#ffd700"; ctx.fillRect(150, 350, 8, 40); ctx.fillRect(162, 350, 8, 40);
                 ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(160, 340 - player.juggleY, 10, 0, Math.PI*2); ctx.fill();
                 rBtns.forEach((b, i) => {{
@@ -180,40 +188,5 @@ elif st.session_state.app_mode == 'TRAINING':
                 ctx.font="bold 18px monospace"; ctx.fillText("RESUMO FINAL", 160, 140);
                 let fs = Math.floor(score); ctx.fillText("SCORE: " + fs, 160, 175);
                 let gbr = (!missedAny && hits > 0);
-                if(fs >= 950) {{ ctx.fillStyle="#0f0"; ctx.fillText("NÍVEL Z (ELITE)", 160, 215); ctx.font="11px monospace"; ctx.fillText("+2.5 DNA / -1.5 TRAVA", 160, 245); }}
-                else if(fs >= 600) {{ ctx.fillStyle="#ffd700"; ctx.fillText("NÍVEL Y (TREINO)", 160, 215); ctx.font="11px monospace"; ctx.fillText("+1.0 DNA / -1.0 TRAVA", 160, 245); }}
-                else {{ ctx.fillStyle="#f00"; ctx.fillText("NÍVEL X (ABAIXO)", 160, 215); ctx.font="11px monospace"; ctx.fillText("SEM EVOLUÇÃO", 160, 245); }}
-                if(gbr) {{ ctx.fillStyle="#fff"; ctx.font="bold 12px monospace"; ctx.fillText("GABARITO RÍTMICO: +1.0 EXTRA!", 160, 275); }}
-            }}
-        }}
-
-        canvas.addEventListener('pointerdown', e => {{
-            const r=canvas.getBoundingClientRect(); const x=e.clientX-r.left, y=e.clientY-r.top;
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-            if(currentPhase < 4) {{ if(Math.hypot(x-joy.x, y-joy.y)<60) joy.active=true; }}
-            else {{
-                rBtns.forEach((b, i) => {{
-                    if(Math.hypot(x-b.x, y-b.y)<35) {{
-                        let h = false;
-                        rhythmNotes.forEach((n, ni) => {{
-                            if(n.type === i && n.x > 15 && n.x < 75) {{
-                                h = true; rhythmNotes.splice(ni, 1); hits++;
-                                let pts = rhythmTimer < 15 ? 10 : (rhythmTimer < 30 ? 20 : (rhythmTimer < 45 ? 30 : 50));
-                                score += pts; player.juggleY = 50; playWhistle(1000); triggerHaptic(50);
-                            }}
-                        }});
-                        if(!h) {{ score -= 10; missedAny = true; playWhistle(400); }}
-                    }}
-                }});
-            }}
-        }});
-        canvas.addEventListener('pointermove', e => {{ if(!joy.active) return; const r=canvas.getBoundingClientRect(); let dx=e.clientX-r.left-joy.x, dy=e.clientY-r.top-joy.y, d=Math.min(Math.hypot(dx,dy),45), a=Math.atan2(dy,dx); joy.currX=joy.x+Math.cos(a)*d; joy.currY=joy.y+Math.sin(a)*d; }});
-        canvas.addEventListener('pointerup', () => {{ joy.active=false; joy.currX=joy.x; joy.currY=joy.y; }});
-        initModule(1); update();
-    </script>
-    """
-    components.html(game_code, height=650)
-    if st.button("VOLTAR AO LOBBY", use_container_width=True):
-        st.session_state.app_mode = 'LOBBY'; st.rerun()
-
-st.sidebar.caption("GOAT TV FEDERATION © 2026")
+                if(fs >= 950) {{ ctx.fillStyle="#0f0"; ctx.fillText("NÍVEL Z (ELITE)", 160, 215); ctx.font="11px monospace"; ctx.fillText("+2.5 DNA", 160, 245); ctx.fillStyle="#f44"; ctx.fillText("-1.5 TRAVA", 160, 265); }}
+                else if(fs >= 600) {{ ctx.

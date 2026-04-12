@@ -3,7 +3,7 @@ import streamlit.components.v1 as components
 import json
 
 # 1. CONFIGURAÇÃO GOAT TV
-st.set_page_config(page_title="GOAT TV - CT ARCADE v15", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="GOAT TV - CT ARCADE v16", layout="centered", initial_sidebar_state="collapsed")
 
 DNA_ATTRS = ["Condução", "Velocidade", "Drible"]
 TRAVA_ATTRS = ["Desarme", "Impacto Físico"]
@@ -23,10 +23,10 @@ if st.session_state.app_mode == 'LOBBY':
             st.session_state.app_mode = 'TRAINING'
             st.rerun()
     with col2:
-        st.markdown("### 📊 Efeito no Arquétipo")
+        st.markdown("### 📊 Status de Evolução")
         st.success("📈 DNA: " + ", ".join(DNA_ATTRS))
         st.error("📉 TRAVA: " + ", ".join(TRAVA_ATTRS))
-        st.info("💡 Agora com feedback tátil e sonoro de colisão!")
+        st.info("💡 NOVIDADE: Efeito visual ao tomar 'hit' dos adversários!")
 
 # --- TELA 2: CAMPO DE TREINAMENTO ---
 elif st.session_state.app_mode == 'TRAINING':
@@ -47,28 +47,23 @@ elif st.session_state.app_mode == 'TRAINING':
         const phaseDisp = document.getElementById('phaseDisp');
         const modeDisp = document.getElementById('modeDisp');
 
-        // WEB AUDIO API - Sintetizador de Apito
+        // AUDIO SYSTEM
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playWhistle() {{
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(800, audioCtx.currentTime); // Tom agudo
-            osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(900, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(1300, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.2);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.2);
         }}
 
-        // VIBRATION API
-        function triggerHaptic() {{
-            if (navigator.vibrate) {{ navigator.vibrate(100); }}
-        }}
+        function triggerHaptic(ms) {{ if (navigator.vibrate) navigator.vibrate(ms); }}
 
-        let player = {{ x: 160, y: 410, speed: 1.5 }};
+        let player = {{ x: 160, y: 410, speed: 1.5, hitTimer: 0 }};
         let ball = {{ x: 160, y: 385 }};
         let score = 1000;
         let currentPhase = 1;
@@ -86,8 +81,8 @@ elif st.session_state.app_mode == 'TRAINING':
                 enemies:[
                     {{x:100, y:340, cx:100, cy:340, rx:120, ry:0, sx:1.5, sy:0, dx:1, dy:0, t:'H'}},
                     {{x:220, y:340, cx:220, cy:340, rx:120, ry:0, sx:1.5, sy:0, dx:-1, dy:0, t:'H'}},
-                    {{x:160, y:180, cx:160, cy:180, rx:80, ry:40, sx:1.3, sy:0.8, dx:1, dy:1, t:'D'}},
-                    {{x:160, y:100, cx:160, cy:100, rx:80, ry:30, sx:1.3, sy:0.6, dx:-1, dy:-1, t:'D'}}
+                    {{x:160, y:180, cx:160, cy:180, rx:90, ry:50, sx:1.4, sy:0.9, dx:1, dy:1, t:'D'}},
+                    {{x:160, y:100, cx:160, cy:100, rx:90, ry:40, sx:1.4, sy:0.7, dx:-1, dy:-1, t:'D'}}
                 ]
             }}
         }};
@@ -108,14 +103,19 @@ elif st.session_state.app_mode == 'TRAINING':
 
         function update() {{
             if (gameState === 'FINISHED') return;
+            if (player.hitTimer > 0) player.hitTimer--;
+
             if (gameState === 'PLAYING') {{
                 if (joy.active) {{
                     let dx = joy.currX - joy.x, dy = joy.currY - joy.y, d = Math.hypot(dx, dy);
                     if (d > 3) {{ 
                         let vx = (dx/d)*player.speed, vy = (dy/d)*player.speed;
                         let margin = 20 * getScale(player.y);
+                        
+                        // COLISÃO COM BORDA (QUADRADO LIMITADO)
                         if(player.x+vx > margin && player.x+vx < 320-margin) player.x += vx;
                         if(player.y+vy > 10 && player.y+vy < 450) player.y += vy;
+                        
                         ball.x += (player.x - ball.x) * 0.25;
                         ball.y += (player.y - 22*getScale(player.y) - ball.y) * 0.25;
                     }}
@@ -127,10 +127,12 @@ elif st.session_state.app_mode == 'TRAINING':
                         e.x += e.sx * e.dx; e.y += e.sy * e.dy;
                         if (Math.abs(e.x - e.cx) > e.rx/2) e.dx *= -1;
                         if (e.t === 'D' && Math.abs(e.y - e.cy) > e.ry/2) e.dy *= -1;
+                        
+                        // COLISÃO COM INIMIGO: SCORE CAI E JOGADOR PISCA
                         if (Math.hypot(player.x - e.x, player.y - e.y) < 18*getScale(e.y)) {{
-                            score -= 0.6;
-                            // Feedback de colisão com inimigo (Leve)
-                            if(Math.floor(Date.now()/500) % 2 === 0) triggerHaptic();
+                            score -= 0.8;
+                            player.hitTimer = 15; // Inicia o flash vermelho
+                            if(Math.floor(Date.now()/300) % 2 === 0) triggerHaptic(50);
                         }}
                     }});
                 }}
@@ -139,12 +141,11 @@ elif st.session_state.app_mode == 'TRAINING':
                 phaseGates.forEach((g, i) => {{
                     let id1 = `p${{currentPhase}}g${{i}}a`, id2 = `p${{currentPhase}}g${{i}}b`;
                     let s = getScale(g.y);
-                    // COLISÃO COM CONES + SOM + VIBRAÇÃO
                     if (!fallenCones.includes(id1) && Math.hypot(player.x-g.x1, player.y-g.y) < 12*s) {{ 
-                        fallenCones.push(id1); score -= 50; playWhistle(); triggerHaptic(); 
+                        fallenCones.push(id1); score -= 50; playWhistle(); triggerHaptic(100); 
                     }}
                     if (!fallenCones.includes(id2) && Math.hypot(player.x-g.x2, player.y-g.y) < 12*s) {{ 
-                        fallenCones.push(id2); score -= 50; playWhistle(); triggerHaptic(); 
+                        fallenCones.push(id2); score -= 50; playWhistle(); triggerHaptic(100); 
                     }}
                 }});
 
@@ -166,6 +167,8 @@ elif st.session_state.app_mode == 'TRAINING':
         function render() {{
             ctx.fillStyle = '#1e3d1a'; ctx.fillRect(0,0,320,460);
             ctx.fillStyle = '#050505'; ctx.fillRect(0,460,320,140);
+            
+            // GRID DE PERSPECTIVA
             ctx.strokeStyle = "rgba(255,255,255,0.08)";
             for(let i=-100; i<=420; i+=40) {{ ctx.beginPath(); ctx.moveTo(160, -80); ctx.lineTo(i*1.5-80, 460); ctx.stroke(); }}
 
@@ -191,7 +194,11 @@ elif st.session_state.app_mode == 'TRAINING':
                 }} else if (obj.type === 'enemy') {{
                     ctx.fillStyle="#f00"; ctx.fillRect(obj.data.x-9*s, obj.data.y-28*s, 18*s, 22*s);
                 }} else if (obj.type === 'player') {{
-                    ctx.fillStyle="#ffd700"; ctx.fillRect(player.x-8*s, player.y-30*s, 16*s, 25*s);
+                    // LÓGICA DE FLASH VERMELHO (HIT EFFECT)
+                    let isHit = player.hitTimer > 0 && Math.floor(Date.now() / 80) % 2 === 0;
+                    ctx.fillStyle = isHit ? "#ff0000" : "#ffd700";
+                    ctx.fillRect(player.x-8*s, player.y-30*s, 16*s, 25*s);
+                    ctx.fillStyle="#d2b48c"; ctx.beginPath(); ctx.arc(player.x, player.y-35*s, 7*s, 0, Math.PI*2); ctx.fill();
                 }} else if (obj.type === 'ball') {{
                     ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 6*s, 0, Math.PI*2); ctx.fill();
                 }}
@@ -204,21 +211,28 @@ elif st.session_state.app_mode == 'TRAINING':
             }}
 
             if(gameState === 'FINISHED') {{
-                ctx.fillStyle = "rgba(0,0,0,0.95)"; ctx.fillRect(0,0,320,460);
+                ctx.fillStyle = "rgba(0,0,0,0.96)"; ctx.fillRect(0,0,320,460);
                 ctx.fillStyle = "#ffd700"; ctx.font = "bold 20px monospace"; ctx.textAlign = "center";
                 ctx.fillText("RESUMO DE EVOLUÇÃO", 160, 150);
                 let fs = Math.floor(score);
                 ctx.font = "16px monospace"; ctx.fillText("SCORE: " + fs, 160, 190);
-                if(fs >= 850) {{ ctx.fillStyle = "#0f0"; ctx.fillText("NÍVEL Z: ELITE", 160, 230); ctx.font="10px monospace"; ctx.fillText("+2.5 DNA / -1.5 TRAVA", 160, 260); }}
-                else if(fs >= 500) {{ ctx.fillStyle = "#ffd700"; ctx.fillText("NÍVEL Y: TREINO", 160, 230); ctx.font="10px monospace"; ctx.fillText("+1.0 DNA / -1.0 TRAVA", 160, 260); }}
-                else {{ ctx.fillStyle = "#f00"; ctx.fillText("NÍVEL X: SEM GANHO", 160, 230); }}
+                if(fs >= 850) {{ ctx.fillStyle="#0f0"; ctx.fillText("NÍVEL Z: ELITE", 160, 230); }}
+                else if(fs >= 500) {{ ctx.fillStyle="#ffd700"; ctx.fillText("NÍVEL Y: TREINO", 160, 230); }}
+                else {{ ctx.fillStyle="#f00"; ctx.fillText("NÍVEL X: SEM GANHO", 160, 230); }}
             }}
 
+            // ANALÓGICO ARCADE
             ctx.beginPath(); ctx.arc(joy.x, joy.y, 45, 0, Math.PI*2); ctx.strokeStyle='#ffd700'; ctx.stroke();
             ctx.beginPath(); ctx.arc(joy.currX, joy.currY, 20, 0, Math.PI*2); ctx.fillStyle='#ffd700'; ctx.fill();
         }}
 
-        canvas.addEventListener('pointerdown', e => {{ const r=canvas.getBoundingClientRect(); if(Math.hypot(e.clientX-r.left-joy.x, e.clientY-r.top-joy.y)<60) {{ joy.active=true; if(audioCtx.state === 'suspended') audioCtx.resume(); }} }});
+        canvas.addEventListener('pointerdown', e => {{ 
+            const r=canvas.getBoundingClientRect(); 
+            if(Math.hypot(e.clientX-r.left-joy.x, e.clientY-r.top-joy.y)<60) {{ 
+                joy.active=true; 
+                if(audioCtx.state === 'suspended') audioCtx.resume(); 
+            }} 
+        }});
         canvas.addEventListener('pointermove', e => {{ if(!joy.active) return; const r=canvas.getBoundingClientRect(); let dx=e.clientX-r.left-joy.x, dy=e.clientY-r.top-joy.y, d=Math.min(Math.hypot(dx,dy),45), a=Math.atan2(dy,dx); joy.currX=joy.x+Math.cos(a)*d; joy.currY=joy.y+Math.sin(a)*d; }});
         canvas.addEventListener('pointerup', () => {{ joy.active=false; joy.currX=joy.x; joy.currY=joy.y; }});
         
@@ -232,4 +246,4 @@ elif st.session_state.app_mode == 'TRAINING':
         st.session_state.app_mode = 'LOBBY'
         st.rerun()
 
-st.sidebar.caption("GOAT TV ARCADE CT v15.0")
+st.sidebar.caption("GOAT TV ARCADE CT v16.0")

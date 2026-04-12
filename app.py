@@ -5,12 +5,11 @@ import os
 import re
 
 # 1. CONFIGURAÇÃO INSTITUCIONAL - GOAT TV
-st.set_page_config(page_title="GOAT TV - CT ARCADE", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="GOAT TV - CT ARCADE v8", layout="centered", initial_sidebar_state="collapsed")
 
-# --- SISTEMA DE DADOS E ARQUÉTIPOS (O DOSSIÊ) ---
+# --- SISTEMA DE DADOS E ARQUÉTIPOS ---
 DB_FILE = "goat_players.json"
 
-# Aqui está a alma do negócio: O que sobe e o que desce
 TREINOS_LOGIC = {
     "DRIBLE": {
         "sobe": ["Drible", "Velocidade", "Condução"], 
@@ -34,45 +33,32 @@ TREINOS_LOGIC = {
     }
 }
 
-def load_data():
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r") as f: return json.load(f)
-        except: return {}
-    return {}
-
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.player_id = ""
     st.session_state.treino_selecionado = "DRIBLE"
 
-# --- TELA 1: PORTAL DE ACESSO COM INFO DE ARQUÉTIPO ---
+# --- TELA 1: PORTAL DE ACESSO ---
 if not st.session_state.logged_in:
     st.markdown("<h2 style='text-align: center; color: #ffd700;'>GOAT TV: PORTAL DE ACESSO</h2>", unsafe_allow_html=True)
     st.write("---")
     
     col1, col2 = st.columns([1, 1.2])
-    
     with col1:
         pid_input = st.text_input("ID DO ATLETA:", "").strip().upper()
         tipo_treino = st.selectbox("SETOR DE TREINO:", list(TREINOS_LOGIC.keys()))
         
     with col2:
-        # PAINEL DE IMPACTO NO ARQUÉTIPO
         st.markdown(f"### 📊 Efeito: {tipo_treino}")
         st.caption(TREINOS_LOGIC[tipo_treino]['desc'])
-        
         c1, c2 = st.columns(2)
         with c1:
             st.markdown("##### 📈 SOBE")
-            for s in TREINOS_LOGIC[tipo_treino]['sobe']:
-                st.markdown(f"<span style='color:#0f0'>● {s}</span>", unsafe_allow_html=True)
+            for s in TREINOS_LOGIC[tipo_treino]['sobe']: st.markdown(f"<span style='color:#0f0'>● {s}</span>", unsafe_allow_html=True)
         with c2:
             st.markdown("##### 📉 DESCE")
-            for d in TREINOS_LOGIC[tipo_treino]['desce']:
-                st.markdown(f"<span style='color:#f00'>● {d}</span>", unsafe_allow_html=True)
+            for d in TREINOS_LOGIC[tipo_treino]['desce']: st.markdown(f"<span style='color:#f00'>● {d}</span>", unsafe_allow_html=True)
 
-    st.write("")
     if st.button("INICIAR TREINAMENTO ARCADE", use_container_width=True):
         if pid_input:
             st.session_state.logged_in = True
@@ -80,18 +66,28 @@ if not st.session_state.logged_in:
             st.session_state.treino_selecionado = tipo_treino
             st.rerun()
 
-# --- TELA 2: CAMPO DE TREINAMENTO (SISTEMA ARCADE G-PERSPECTIVE) ---
+# --- TELA 2: CAMPO DE TREINAMENTO ---
 else:
     st.markdown(f"### 🏟️ ATLETA: {st.session_state.player_id} | {st.session_state.treino_selecionado}")
     
-    # Lógica de fases e percursos (Mantendo a Ida e Volta)
+    # Configuração de fases: Módulo 3 com 5 PARES DE CONES e Regra de IDA E VOLTA
     fases_json = {
         "DRIBLE": """{
-            1: {startPos:{x:160, y:410}, gates:[{x1:60,x2:120,y:320},{x1:200,x2:260,y:320},{x1:160,x2:220,y:100}], enemies:[]},
-            2: {startPos:{x:160, y:410}, gates:[{x1:40,x2:100,y:350},{x1:220,x2:280,y:250},{x1:130,x2:190,y:80}], enemies:[]},
+            1: {startPos:{x:160, y:410}, gates:[{x1:60,x2:120,y:320},{x1:200,x2:260,y:320},{x1:130,x2:190,y:150}], enemies:[]},
+            2: {startPos:{x:160, y:410}, gates:[{x1:40,x2:100,y:350},{x1:220,x2:280,y:250},{x1:40,x2:100,y:150},{x1:130,x2:190,y:80}], enemies:[]},
             3: {startPos:{x:160, y:410}, 
-                gates:[{x1:220,x2:280,y:350},{x1:40,x2:100,y:250},{x1:130,x2:190,y:60}], 
-                enemies:[{x:160, y:280, range:120, speed:1.2, dir:1},{x:160, y:150, range:150, speed:1.8, dir:-1}]}
+                gates:[
+                    {x1:220,x2:280,y:380}, 
+                    {x1:40,x2:100,y:300}, 
+                    {x1:220,x2:280,y:220}, 
+                    {x1:40,x2:100,y:140}, 
+                    {x1:130,x2:190,y:60}
+                ], 
+                enemies:[
+                    {x:160, y:260, range:120, speed:1.2, dir:1},
+                    {x:160, y:120, range:150, speed:1.5, dir:-1}
+                ]
+            }
         }""",
         "PASSE": "{1: {startPos:{x:160, y:410}, gates:[{x1:130,x2:190,y:100}], enemies:[]}, 2: {startPos:{x:160, y:410}, gates:[{x1:40,x2:100,y:150}], enemies:[]}, 3: {startPos:{x:160, y:410}, gates:[{x1:220,x2:280,y:150}], enemies:[]}}",
         "FINALIZACAO": "{1: {startPos:{x:160, y:410}, gates:[{x1:100,x2:220,y:120}], enemies:[]}, 2: {startPos:{x:160, y:410}, gates:[{x1:80,x2:240,y:100}], enemies:[]}, 3: {startPos:{x:160, y:410}, gates:[{x1:140,x2:180,y:80}], enemies:[]}}",
@@ -120,7 +116,7 @@ else:
         let score = 1000;
         let currentPhase = 1;
         let currentGate = 0;
-        let direction = 1; 
+        let direction = 1; // 1 = IDA, -1 = VOLTA
         let gameState = 'COUNTDOWN';
         let countdown = 3;
         let fallenCones = [];
@@ -157,6 +153,7 @@ else:
                         let nextX = player.x + vx, nextY = player.y + vy;
                         let margin = 20 * getScale(player.y);
                         
+                        // PAREDES REAIS
                         if(nextX > margin && nextX < 320 - margin) player.x = nextX;
                         if(nextY > margin && nextY < 450) player.y = nextY;
                         
@@ -170,7 +167,7 @@ else:
                     phaseData.enemies.forEach(e => {{
                         e.x += e.speed * e.dir;
                         if (Math.abs(e.x - 160) > e.range/2) e.dir *= -1;
-                        if (Math.hypot(player.x - e.x, player.y - e.y) < 18*getScale(e.y)) score -= 0.5;
+                        if (Math.hypot(player.x - e.x, player.y - e.y) < 18*getScale(e.y)) score -= 0.4;
                     }});
                 }}
 
@@ -178,6 +175,8 @@ else:
                 let gate = phaseGates[currentGate];
                 if (Math.hypot(ball.x - (gate.x1+gate.x2)/2, ball.y - gate.y) < 25) {{
                     currentGate += direction;
+                    
+                    // REGRA BATE E VOLTA
                     if (currentGate >= phaseGates.length) {{
                         direction = -1; currentGate = phaseGates.length - 2;
                         modeDisp.innerText = "VOLTA"; modeDisp.style.color = "#0f0";
@@ -232,6 +231,7 @@ else:
                 }} else if (obj.type === 'player') {{
                     ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(player.x, player.y, 12*s, 5*s, 0, 0, Math.PI*2); ctx.fill();
                     ctx.fillStyle="#ffd700"; ctx.fillRect(player.x-8*s, player.y-30*s, 16*s, 25*s);
+                    ctx.fillStyle="#d2b48c"; ctx.beginPath(); ctx.arc(player.x, player.y-35*s, 7*s, 0, Math.PI*2); ctx.fill();
                 }} else if (obj.type === 'ball') {{
                     ctx.fillStyle="white"; ctx.beginPath(); ctx.arc(ball.x, ball.y, 6*s, 0, Math.PI*2); ctx.fill();
                     ctx.strokeStyle="#000"; ctx.stroke();
@@ -244,24 +244,13 @@ else:
                 ctx.fillText(countdown, 160, 230);
             }}
 
-            // ANALÓGICO ARCADE
-            ctx.beginPath(); ctx.arc(joy.x, joy.y, 45, 0, Math.PI*2); 
-            ctx.strokeStyle='#ffd700'; ctx.lineWidth=2; ctx.stroke();
-            ctx.beginPath(); ctx.arc(joy.currX, joy.currY, 20, 0, Math.PI*2); 
-            ctx.fillStyle='#ffd700'; ctx.fill();
+            // ANALÓGICO ARCADE CENTRALIZADO
+            ctx.beginPath(); ctx.arc(joy.x, joy.y, 45, 0, Math.PI*2); ctx.strokeStyle='#ffd700'; ctx.lineWidth=2; ctx.stroke();
+            ctx.beginPath(); ctx.arc(joy.currX, joy.currY, 20, 0, Math.PI*2); ctx.fillStyle='#ffd700'; ctx.fill();
         }}
 
-        canvas.addEventListener('pointerdown', e => {{ 
-            const r=canvas.getBoundingClientRect(); 
-            const x = e.clientX-r.left, y = e.clientY-r.top;
-            if(Math.hypot(x-joy.x, y-joy.y)<60) joy.active=true; 
-        }});
-        canvas.addEventListener('pointermove', e => {{ 
-            if(!joy.active) return; 
-            const r=canvas.getBoundingClientRect(); 
-            let dx=e.clientX-r.left-joy.x, dy=e.clientY-r.top-joy.y, d=Math.min(Math.hypot(dx,dy),45), a=Math.atan2(dy,dx); 
-            joy.currX=joy.x+Math.cos(a)*d; joy.currY=joy.y+Math.sin(a)*d; 
-        }});
+        canvas.addEventListener('pointerdown', e => {{ const r=canvas.getBoundingClientRect(); if(Math.hypot(e.clientX-r.left-joy.x, e.clientY-r.top-joy.y)<60) joy.active=true; }});
+        canvas.addEventListener('pointermove', e => {{ if(!joy.active) return; const r=canvas.getBoundingClientRect(); let dx=e.clientX-r.left-joy.x, dy=e.clientY-r.top-joy.y, d=Math.min(Math.hypot(dx,dy),45), a=Math.atan2(dy,dx); joy.currX=joy.x+Math.cos(a)*d; joy.currY=joy.y+Math.sin(a)*d; }});
         canvas.addEventListener('pointerup', () => {{ joy.active=false; joy.currX=joy.x; joy.currY=joy.y; }});
         
         initModule(1);
@@ -271,9 +260,9 @@ else:
 
     components.html(game_code, height=650)
     
-    if st.button("CONFIRMAR E SALVAR RESULTADOS", use_container_width=True):
-        st.success(f"Estatísticas de {st.session_state.player_id} gravadas com sucesso!")
+    if st.button("FINALIZAR E SALVAR", use_container_width=True):
+        st.success(f"Resultados de {st.session_state.player_id} registrados!")
         st.session_state.logged_in = False
         st.rerun()
 
-st.sidebar.caption("GOAT TV ARCADE CT v6.0")
+st.sidebar.caption("GOAT TV ARCADE CT v8.0")
